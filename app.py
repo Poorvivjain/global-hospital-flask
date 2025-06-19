@@ -6,11 +6,12 @@ import os
 app = Flask(__name__)
 CORS(app)
 
+# Configure the database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "sqlite:///local.db").replace("postgres://", "postgresql://")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# Define models
+# Define Models
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True)
@@ -28,8 +29,8 @@ class Appointment(db.Model):
     doctor_name = db.Column(db.String(100))
     appointment_date = db.Column(db.String(100))
 
-@app.before_first_request
-def init_db():
+# ✅ Initialize the database and add default doctors (No decorator used)
+with app.app_context():
     db.create_all()
     if Doctor.query.count() == 0:
         db.session.add_all([
@@ -39,21 +40,32 @@ def init_db():
         ])
         db.session.commit()
 
+# Routes for rendering HTML pages
 @app.route("/")
-def home(): return render_template("index.html")
+def home():
+    return render_template("index.html")
 
 @app.route("/login")
-def login(): return render_template("login.html")
+def login():
+    return render_template("login.html")
 
 @app.route("/register")
-def register(): return render_template("register.html")
+def register():
+    return render_template("register.html")
 
 @app.route("/doctor")
-def doctor(): return render_template("doctor.html")
+def doctor():
+    return render_template("doctor.html")
 
 @app.route("/appointment")
-def appointment(): return render_template("appointment.html")
+def appointment():
+    return render_template("appointment.html")
 
+@app.route("/doctor_appointments")
+def doctor_appointments():
+    return render_template("doctor_appointments.html")
+
+# API: Register
 @app.route("/api/register", methods=["POST"])
 def api_register():
     data = request.get_json()
@@ -63,12 +75,14 @@ def api_register():
     db.session.commit()
     return jsonify({"message": "Registered"})
 
+# API: Login
 @app.route("/api/login", methods=["POST"])
 def api_login():
     data = request.get_json()
     user = User.query.filter_by(username=data["username"], password=data["password"]).first()
     return jsonify({"message": "Success" if user else "Invalid"}), 200 if user else 401
 
+# API: Doctors
 @app.route("/api/doctors", methods=["GET", "POST"])
 def api_doctors():
     if request.method == "POST":
@@ -76,8 +90,12 @@ def api_doctors():
         db.session.add(Doctor(**data))
         db.session.commit()
         return jsonify({"message": "Doctor added"})
-    return jsonify([{ "name": d.name, "specialization": d.specialization, "timing": d.timing } for d in Doctor.query.all()])
+    return jsonify([
+        {"name": d.name, "specialization": d.specialization, "timing": d.timing}
+        for d in Doctor.query.all()
+    ])
 
+# API: Appointments
 @app.route("/api/appointments", methods=["GET", "POST"])
 def api_appointments():
     if request.method == "POST":
@@ -85,7 +103,11 @@ def api_appointments():
         db.session.add(Appointment(**data))
         db.session.commit()
         return jsonify({"message": "Booked"})
-    return jsonify([{ "patient_name": a.patient_name, "doctor_name": a.doctor_name, "appointment_date": a.appointment_date } for a in Appointment.query.all()])
+    return jsonify([
+        {"patient_name": a.patient_name, "doctor_name": a.doctor_name, "appointment_date": a.appointment_date}
+        for a in Appointment.query.all()
+    ])
 
+# Run locally (not needed on Render)
 if __name__ == "__main__":
     app.run(debug=True)
