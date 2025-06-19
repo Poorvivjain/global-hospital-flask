@@ -1,53 +1,59 @@
-
+<!-- doctor_appointments.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Doctor Appointments</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <meta charset="UTF-8" />
+  <title>Doctor's Appointments - Global Hospital</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header><h1>Doctor-wise Appointments</h1></header>
-  <form onsubmit="loadAppointmentsForDoctor(event)">
-    <select id="doctorSelectDropdown" required></select>
-    <button type="submit">View Appointments</button>
-  </form>
-  <ul id="doctorAppointmentList"></ul>
-  <a href="/">Back to Home</a>
+  <div class="form-card">
+    <h2>View Appointments by Doctor</h2>
+    <label for="doctorSelect">Select Doctor:</label>
+    <select id="doctorSelect">
+      <option disabled selected>Select Doctor</option>
+    </select>
+
+    <ul id="doctorAppointmentsList"></ul>
+
+    <br>
+    <a href="index.html"><button>Back to Home</button></a>
+  </div>
 
   <script>
-    async function loadDoctorsDropdown() {
-      const res = await fetch("/api/doctors");
-      const data = await res.json();
-      const dropdown = document.getElementById("doctorSelectDropdown");
-      dropdown.innerHTML = "";
-      data.forEach(d => {
-        let option = document.createElement("option");
-        option.value = d.name;
-        option.textContent = d.name;
-        dropdown.appendChild(option);
+    function loadDoctors() {
+      const doctors = JSON.parse(localStorage.getItem("doctors")) || [];
+      const select = document.getElementById("doctorSelect");
+      doctors.forEach(doc => {
+        const option = document.createElement("option");
+        option.value = doc.name;
+        option.textContent = doc.name;
+        select.appendChild(option);
       });
     }
 
-    async function loadAppointmentsForDoctor(event) {
-      event.preventDefault();
-      const selectedDoctor = document.getElementById("doctorSelectDropdown").value;
-      const res = await fetch("/api/appointments");
-      const appointments = await res.json();
-      const filtered = appointments.filter(app => app.doctor_name === selectedDoctor);
-      const list = document.getElementById("doctorAppointmentList");
+    function showAppointments() {
+      const selectedDoctor = document.getElementById("doctorSelect").value;
+      const appointments = JSON.parse(localStorage.getItem("appointments")) || [];
+
+      const list = document.getElementById("doctorAppointmentsList");
       list.innerHTML = "";
+
+      const filtered = appointments.filter(app => app.doctor === selectedDoctor);
+
       if (filtered.length === 0) {
-        list.innerHTML = "<li>No appointments for selected doctor.</li>";
+        list.innerHTML = "<li>No appointments found for this doctor.</li>";
       } else {
         filtered.forEach(app => {
           const li = document.createElement("li");
-          li.textContent = `${app.patient_name} - ${app.appointment_date}`;
+          li.textContent = `${app.patient} - ${app.date}`;
           list.appendChild(li);
         });
       }
     }
 
-    loadDoctorsDropdown();
+    document.getElementById("doctorSelect").addEventListener("change", showAppointments);
+    window.onload = loadDoctors;
   </script>
 </body>
 </html>
